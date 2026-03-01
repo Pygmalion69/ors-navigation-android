@@ -1,2 +1,2 @@
-# ors-naviation-android
+# ors-navigation-android
 OpenRouteService Navigation Prototype
