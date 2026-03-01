@@ -37,3 +37,6 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Lint baseline
+**/lint-baseline.xml
