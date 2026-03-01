@@ -351,5 +351,5 @@
     "altitude": 511.9823615713549,
     "timestamp": "2018-06-25T18:16:46.999+0000"
   }],
-  "route": "https://api.mapbox.com/directions/v5/mapbox/driving-traffic/11.579233823791801,48.1776966801359;11.573521553454881,48.17812728496367.json?access_token=MAPBOX_TOKEN_REDACTED.L1c9Wo-gk6d3cR3oi1n9SQ&steps=true&overview=full&geometries=geojson"
+  "route": "https://api.mapbox.com/directions/v5/mapbox/driving-traffic/11.579233823791801,48.1776966801359;11.573521553454881,48.17812728496367.json?access_token=${MAPBOX_ACCES_TOKEN}&steps=true&overview=full&geometries=geojson"
 }
