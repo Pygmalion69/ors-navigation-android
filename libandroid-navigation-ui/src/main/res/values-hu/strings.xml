@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Indicates that rerouting is in progress -->
+    <string name="rerouting">Újratervezés...</string>
+
+    <!-- Button title for re-centering tracking -->
+    <string name="re_center">Középre</string>
+
+    <!-- Indicates voice instructions are muted -->
+    <string name="muted">Némítva</string>
+
+    <!-- Indicates voice instructions are unmuted -->
+    <string name="unmuted">Visszahangosítva</string>
+
+    <!-- Shown in off-route scenarios to provide feedback -->
+    <string name="report_problem">Probléma jelentése</string>
+
+    <!-- Test app dialog text -->
+
+    <!-- Test app dialog text start next route -->
+
+    <!-- Test app dialog text cancel navigation -->
+
+</resources>

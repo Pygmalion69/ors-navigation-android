@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Indicates that rerouting is in progress -->
+    <string name="rerouting">Rerouting…</string>
+
+    <!-- Button title for re-centering tracking -->
+    <string name="re_center">RE-CENTER</string>
+
+    <!-- Indicates voice instructions are muted -->
+    <string name="muted">Muted</string>
+
+    <!-- Indicates voice instructions are unmuted -->
+    <string name="unmuted">Unmuted</string>
+    <!-- Shown in off-route scenarios to provide feedback -->
+    <string name="report_problem">Report Problem</string>
+
+    <!-- Test app dialog text -->
+
+    <!-- Test app dialog text start next route -->
+
+    <!-- Test app dialog text cancel navigation -->
+
+    <!-- Should not be translated -->
+    <string name="navigation_guidance_day"
+            translatable="false">mapbox://styles/mapbox/navigation-guidance-day-v4</string>
+    <string name="navigation_guidance_night"
+            translatable="false">mapbox://styles/mapbox/navigation-guidance-night-v4</string>
+    <string name="navigation_view_instance_state"
+            translatable="false">navigation_view_instance_state</string>
+    <string name="navigation_running"
+            translatable="false">navigation_running</string>
+
+    <string name="kilometers">km</string>
+    <string name="meters">m</string>
+    <string name="miles">mi</string>
+    <string name="feet">ft</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Navigation Notifications</string>
+    <string name="notification_eta_format">%s ETA</string>
+    <string name="notification_end_navigation">End Navigation</string>
+
+    <!-- Time formatting -->
+    <plurals name="numberOfDays">
+        <item quantity="one">day</item>
+        <item quantity="other">days</item>
+    </plurals>
+    <!-- Hour -->
+    <string name="hr">hr</string>
+    <!-- Minute -->
+    <string name="min">min</string>
+</resources>

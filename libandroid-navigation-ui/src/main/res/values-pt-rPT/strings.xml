@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Indicates that rerouting is in progress -->
+    <string name="rerouting">A redirecionar...</string>
+
+    <!-- Button title for re-centering tracking -->
+    <string name="re_center">Recentrar</string>
+
+    <!-- Indicates voice instructions are muted -->
+    <string name="muted">Som desligado</string>
+
+    <!-- Indicates voice instructions are unmuted -->
+    <string name="unmuted">Som ligado</string>
+
+    <!-- Shown in off-route scenarios to provide feedback -->
+    <string name="report_problem">Reportar Problema</string>
+
+    <!-- Test app dialog text -->
+
+    <!-- Test app dialog text start next route -->
+
+    <!-- Test app dialog text cancel navigation -->
+
+    <string name="kilometers">km</string>
+    <string name="meters">m</string>
+    <string name="miles">mi</string>
+    <string name="feet">ft</string>
+    <!-- Time formatting -->
+    <plurals name="numberOfDays">
+        <item quantity="one">dia</item>
+        <item quantity="other">dias</item>
+    </plurals>
+    <!-- Hour -->
+    <string name="hr">hor</string>
+    <!-- Minute -->
+    <string name="min">min</string>
+</resources>

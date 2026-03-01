@@ -1,0 +1,4 @@
+<resources>
+
+    <style name="Theme.ORSNavigation" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+</resources>

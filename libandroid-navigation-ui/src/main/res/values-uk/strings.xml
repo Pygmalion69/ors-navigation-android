@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Indicates that rerouting is in progress -->
+    <string name="rerouting">Зміна маршруту…</string>
+
+    <!-- Button title for re-centering tracking -->
+    <string name="re_center">Центрувати</string>
+
+    <!-- Indicates voice instructions are muted -->
+    <string name="muted">Вимкнено</string>
+
+    <!-- Indicates voice instructions are unmuted -->
+    <string name="unmuted">Увімкнено</string>
+
+    <!-- Shown in off-route scenarios to provide feedback -->
+    <string name="report_problem">Повідомити про проблему</string>
+
+    <!-- Test app dialog text -->
+
+    <!-- Test app dialog text start next route -->
+
+    <!-- Test app dialog text cancel navigation -->
+
+    <string name="kilometers">км</string>
+    <string name="meters">м</string>
+    <string name="miles">mi</string>
+    <string name="feet">фт</string>
+</resources>
