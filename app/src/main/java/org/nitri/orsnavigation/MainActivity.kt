@@ -2,6 +2,7 @@ package org.nitri.orsnavigation
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -58,6 +59,7 @@ class MainActivity :
 
     private var simulateRoute = false
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private lateinit var importedRouteLoader: ImportedRouteLoader
 
     @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,6 +85,7 @@ class MainActivity :
             ).show()
         }
         orsClient = Ors.create(apiKey, this)
+        importedRouteLoader = ImportedRouteLoader(contentResolver = contentResolver, language = language)
 
         handleIntent(intent)
 
@@ -119,38 +122,111 @@ class MainActivity :
     }
 
     private fun handleIntent(intent: Intent?) {
-        intent?.data?.let { uri ->
-            if (uri.scheme == "geo") {
-                val schemeSpecificPart = uri.schemeSpecificPart
-                val coordsPart = schemeSpecificPart.split('?')[0]
-                val latLon = coordsPart.split(',')
-                if (latLon.size >= 2) {
+        Timber.d(
+            "handleIntent action=%s data=%s type=%s",
+            intent?.action,
+            intent?.data,
+            intent?.type,
+        )
+
+        when (val incomingType = ImportedRouteIntentClassifier.classify(intent)) {
+            is IncomingIntentType.Geo -> handleGeoIntent(incomingType.intent)
+            is IncomingIntentType.JsonRoute -> {
+                val uri = incomingType.intent.data
+                if (uri == null) {
+                    showError("Route import failed: missing URI.")
+                } else {
+                    importJsonRoute(uri)
+                }
+            }
+
+            IncomingIntentType.Unsupported -> {
+                Timber.d("Unsupported or empty launch intent.")
+            }
+        }
+    }
+
+    private fun handleGeoIntent(intent: Intent) {
+        val uri = intent.data ?: return
+        val schemeSpecificPart = uri.schemeSpecificPart
+        val coordsPart = schemeSpecificPart.split('?')[0]
+        val latLon = coordsPart.split(',')
+        if (latLon.size >= 2) {
+            try {
+                val lat = latLon[0].toDouble()
+                val lon = latLon[1].toDouble()
+                setDestination(LatLng(lat, lon))
+            } catch (e: NumberFormatException) {
+                Timber.e(e, "Invalid coordinates in geo URI")
+                showError("Invalid geo coordinates in intent URI.")
+            }
+        } else {
+            // Try to parse query if present, e.g., geo:0,0?q=lat,lon(label)
+            val query = uri.query
+            if (query != null && query.startsWith("q=")) {
+                val qValue = query.substring(2).split('(')[0]
+                val qLatLon = qValue.split(',')
+                if (qLatLon.size >= 2) {
                     try {
-                        val lat = latLon[0].toDouble()
-                        val lon = latLon[1].toDouble()
+                        val lat = qLatLon[0].toDouble()
+                        val lon = qLatLon[1].toDouble()
                         setDestination(LatLng(lat, lon))
                     } catch (e: NumberFormatException) {
-                        Timber.e(e, "Invalid coordinates in geo URI")
-                    }
-                } else {
-                    // Try to parse query if present, e.g., geo:0,0?q=lat,lon(label)
-                    val query = uri.query
-                    if (query != null && query.startsWith("q=")) {
-                        val qValue = query.substring(2).split('(')[0]
-                        val qLatLon = qValue.split(',')
-                        if (qLatLon.size >= 2) {
-                            try {
-                                val lat = qLatLon[0].toDouble()
-                                val lon = qLatLon[1].toDouble()
-                                setDestination(LatLng(lat, lon))
-                            } catch (e: NumberFormatException) {
-                                Timber.e(e, "Invalid coordinates in geo URI query")
-                            }
-                        }
+                        Timber.e(e, "Invalid coordinates in geo URI query")
+                        showError("Invalid geo query coordinates in intent URI.")
                     }
                 }
             }
         }
+    }
+
+    private fun importJsonRoute(uri: Uri) {
+        ioScope.launch {
+            Timber.d("Importing JSON route from uri=%s", uri)
+            when (val result = importedRouteLoader.load(uri)) {
+                is ImportedRouteResult.Success -> {
+                    withContext(Dispatchers.Main) {
+                        activateImportedRoute(result.route)
+                        Snackbar.make(
+                            findViewById(R.id.container),
+                            "Route imported successfully.",
+                            Snackbar.LENGTH_LONG,
+                        ).show()
+                    }
+                    Timber.d("Route import successful")
+                }
+
+                is ImportedRouteResult.Error -> {
+                    Timber.e(result.cause, "Route import failed: %s", result.message)
+                    withContext(Dispatchers.Main) {
+                        stopNavigationAndRoute()
+                        showError("Route import failed: ${result.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun activateImportedRoute(importedRoute: DirectionsRoute) {
+        stopNavigationAndRoute()
+        route = importedRoute
+        destination = null
+
+        if (::mapLibreMap.isInitialized) {
+            navigationMapRoute?.addRoutes(listOf(importedRoute))
+        }
+
+        binding.clearPoints.visibility = View.VISIBLE
+        binding.startRouteLayout.visibility = View.VISIBLE
+        binding.startRouteButton.visibility = View.VISIBLE
+    }
+
+    private fun showError(message: String) {
+        Snackbar.make(
+            findViewById(R.id.container),
+            message,
+            Snackbar.LENGTH_LONG,
+        ).show()
     }
 
     private fun setDestination(point: LatLng) {
@@ -194,6 +270,12 @@ class MainActivity :
                 mapLibreMap.addMarker(MarkerOptions().position(point))
                 binding.clearPoints.visibility = View.VISIBLE
                 calculateRoute()
+            }
+
+            route?.let {
+                navigationMapRoute?.addRoutes(listOf(it))
+                binding.startRouteLayout.visibility = View.VISIBLE
+                binding.clearPoints.visibility = View.VISIBLE
             }
 
             Snackbar.make(
