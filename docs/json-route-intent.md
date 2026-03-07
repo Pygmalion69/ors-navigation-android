@@ -28,11 +28,31 @@ Use explicit component targeting.
 On modern Android, these common ADB patterns are often blocked:
 
 - `content://com.android.externalstorage.documents/...` from `adb shell am start` can fail with a `SecurityException` because the shell UID does not hold a document grant.
-- `file:///sdcard/Download/route.json` can fail with `EACCES` due to scoped-storage restrictions.
+- `file:///sdcard/Download/route.json` can fail with `EACCES` if the app has no storage permission.
 
-Because of this, the most reliable ADB flow for debug builds is importing from **app-internal storage**.
+### Android 12 and lower (`targetSdk` still allows `READ_EXTERNAL_STORAGE`)
 
-### Debug-build flow that works reliably
+For `file:///sdcard/...` imports, grant storage permission to the app:
+
+```bash
+adb shell pm grant org.nitri.orsnavigation android.permission.READ_EXTERNAL_STORAGE
+```
+
+Then start with file URI:
+
+```bash
+adb shell am start \
+  -n org.nitri.orsnavigation/.MainActivity \
+  -a android.intent.action.VIEW \
+  -d "file:///sdcard/Download/route.json" \
+  -t "application/json"
+```
+
+The app also requests this permission at runtime (Android 12 and below) when needed and retries the import after grant.
+
+### Reliable debug fallback (app-internal file)
+
+If external storage is still blocked on your device, use app-internal storage for debug builds:
 
 1) Push JSON to a temporary shell-readable location:
 
