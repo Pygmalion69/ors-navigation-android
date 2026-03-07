@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <application
         android:name=".OrsNavigationApplication"
         android:allowBackup="true"
@@ -30,6 +34,15 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:scheme="geo" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="application/json" android:scheme="content" />
+                <data android:mimeType="application/json" android:scheme="file" />
             </intent-filter>
         </activity>
     </application>
