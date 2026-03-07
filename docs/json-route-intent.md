@@ -7,8 +7,8 @@ The app supports importing a Mapbox/MapLibre Directions JSON payload through `AC
 - Action: `android.intent.action.VIEW`
 - MIME type: `application/json`
 - URI schemes:
-  - `content://` (recommended)
-  - `file://` (best-effort, depends on Android version and sender permissions)
+  - `content://`
+  - `file://`
 
 ## Expected JSON shape
 
@@ -19,32 +19,40 @@ The importer accepts either:
 
 If `routeOptions` metadata is missing, the app derives minimal compatible `routeOptions` from route geometry and uses the same defaults as in-app ORS route creation where possible.
 
-## ADB examples
+## ADB usage
 
-Use explicit component targeting:
+Use explicit component targeting.
+
+### Important Android storage note
+
+On modern Android, these common ADB patterns are often blocked:
+
+- `content://com.android.externalstorage.documents/...` from `adb shell am start` can fail with a `SecurityException` because the shell UID does not hold a document grant.
+- `file:///sdcard/Download/route.json` can fail with `EACCES` due to scoped-storage restrictions.
+
+Because of this, the most reliable ADB flow for debug builds is importing from **app-internal storage**.
+
+### Debug-build flow that works reliably
+
+1) Push JSON to a temporary shell-readable location:
 
 ```bash
-adb push route.json /sdcard/Download/route.json
+adb push route.json /data/local/tmp/route.json
 ```
 
-Preferred (`content://`):
+2) Copy into the app's internal files directory (debuggable app required):
+
+```bash
+adb shell run-as org.nitri.orsnavigation cp /data/local/tmp/route.json files/route.json
+```
+
+3) Start the app with a file URI pointing to app-internal storage:
 
 ```bash
 adb shell am start \
   -n org.nitri.orsnavigation/.MainActivity \
   -a android.intent.action.VIEW \
-  -d "content://com.android.externalstorage.documents/document/primary:Download/route.json" \
-  -t "application/json" \
-  --grant-read-uri-permission
-```
-
-Optional (`file://`, less reliable on modern Android):
-
-```bash
-adb shell am start \
-  -n org.nitri.orsnavigation/.MainActivity \
-  -a android.intent.action.VIEW \
-  -d "file:///sdcard/Download/route.json" \
+  -d "file:///data/user/0/org.nitri.orsnavigation/files/route.json" \
   -t "application/json"
 ```
 
@@ -66,4 +74,4 @@ On failure:
 
 - Invalid JSON or unsupported schema is rejected with a snackbar error.
 - If file access fails (missing permissions, bad URI, unreadable content), import fails with a visible error.
-- `content://` with granted read permission is the most reliable delivery mechanism.
+- For production sharing flows, prefer document-picker/content-URI based sharing where the sender grants URI read permission.
