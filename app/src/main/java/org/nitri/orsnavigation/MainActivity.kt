@@ -280,6 +280,7 @@ class MainActivity :
         binding.clearPoints.visibility = View.VISIBLE
         binding.startRouteLayout.visibility = View.VISIBLE
         binding.startRouteButton.visibility = View.VISIBLE
+        Timber.d("Imported route activation successful")
     }
 
     private fun showError(message: String) {

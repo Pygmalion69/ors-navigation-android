@@ -11,10 +11,11 @@ class ImportedRouteParserTest {
     private val parser = ImportedRouteParser(language = "en")
 
     @Test
-    fun `parses directions response payload`() {
-        val json = readAssetDirectionsJson()
+    fun `parses direct route payload as primary format`() {
+        val response = DirectionsResponse.fromJson(readAssetDirectionsJson())
+        val routeJson = response.routes.first().toJson()
 
-        val result = parser.parseAndNormalize(json)
+        val result = parser.parseAndNormalize(routeJson)
 
         assertTrue(result is ImportedRouteResult.Success)
         val route = (result as ImportedRouteResult.Success).route
@@ -23,11 +24,10 @@ class ImportedRouteParserTest {
     }
 
     @Test
-    fun `parses direct route payload`() {
-        val response = DirectionsResponse.fromJson(readAssetDirectionsJson())
-        val routeJson = response.routes.first().toJson()
+    fun `parses directions response payload as fallback format`() {
+        val json = readAssetDirectionsJson()
 
-        val result = parser.parseAndNormalize(routeJson)
+        val result = parser.parseAndNormalize(json)
 
         assertTrue(result is ImportedRouteResult.Success)
         val route = (result as ImportedRouteResult.Success).route

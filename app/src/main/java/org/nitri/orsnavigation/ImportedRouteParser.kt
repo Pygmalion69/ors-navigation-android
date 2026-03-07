@@ -19,10 +19,14 @@ class ImportedRouteParser(
         val parsedRoute = parseDirectionsRoute(jsonText)
             ?: return ImportedRouteResult.Error("Unsupported route JSON format.")
 
+        Timber.d("Imported route parsed successfully")
+
         if (parsedRoute.routeOptions != null) {
+            Timber.d("Imported route already contains routeOptions; no normalization needed")
             return ImportedRouteResult.Success(parsedRoute)
         }
 
+        Timber.d("Imported route missing routeOptions; normalizing from geometry")
         val coordinates = try {
             val decoded = PolylineUtils.decode(parsedRoute.geometry, 6)
             listOf(decoded.first(), decoded.last())
@@ -56,17 +60,24 @@ class ImportedRouteParser(
     }
 
     private fun parseDirectionsRoute(jsonText: String): DirectionsRoute? {
+        Timber.d("Attempting to parse imported JSON as DirectionsRoute")
+        try {
+            return DirectionsRoute.fromJson(jsonText)
+        } catch (routeError: Exception) {
+            Timber.w(routeError, "JSON is not a raw DirectionsRoute, trying DirectionsResponse")
+        }
+
+        Timber.d("Attempting to parse imported JSON as DirectionsResponse")
         return try {
             val response = DirectionsResponse.fromJson(jsonText)
-            response.routes.firstOrNull()
-        } catch (responseError: Exception) {
-            try {
-                DirectionsRoute.fromJson(jsonText)
-            } catch (routeError: Exception) {
-                Timber.e(responseError, "Failed to parse as DirectionsResponse")
-                Timber.e(routeError, "Failed to parse as DirectionsRoute")
-                null
+            response.routes.firstOrNull().also {
+                if (it == null) {
+                    Timber.e("DirectionsResponse parsed but contained no routes")
+                }
             }
+        } catch (responseError: Exception) {
+            Timber.e(responseError, "Failed to parse imported route JSON")
+            null
         }
     }
 }

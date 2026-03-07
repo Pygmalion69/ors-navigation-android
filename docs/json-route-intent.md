@@ -12,10 +12,20 @@ The app supports importing a Mapbox/MapLibre Directions JSON payload through `AC
 
 ## Expected JSON shape
 
-The importer accepts either:
+Primary supported format is a raw `DirectionsRoute` object (NavFromTrack output), for example:
 
-1. A full Directions response JSON object (`code`, `routes`, ...), using the first route in `routes`.
-2. A single `DirectionsRoute` JSON object directly.
+```json
+{
+  "distance": 8804.829,
+  "duration": 1056.579,
+  "weight": 1056.579,
+  "weight_name": "routability",
+  "geometry": "...",
+  "legs": [ ... ]
+}
+```
+
+The importer also supports a full Directions response (`code`, `routes`, ...) as a fallback and uses the first route from `routes`.
 
 If `routeOptions` metadata is missing, the app derives minimal compatible `routeOptions` from route geometry and uses the same defaults as in-app ORS route creation where possible.
 
