@@ -129,10 +129,10 @@ class MainActivity :
             intent?.type,
         )
 
-        when (val incomingType = ImportedRouteIntentClassifier.classify(intent)) {
-            is IncomingIntentType.Geo -> handleGeoIntent(incomingType.intent)
-            is IncomingIntentType.JsonRoute -> {
-                val uri = incomingType.intent.data
+        when (ImportedRouteIntentClassifier.classify(intent)) {
+            IncomingIntentType.Geo -> handleGeoIntent(intent)
+            IncomingIntentType.JsonRoute -> {
+                val uri = intent?.data
                 if (uri == null) {
                     showError("Route import failed: missing URI.")
                 } else {
@@ -146,8 +146,8 @@ class MainActivity :
         }
     }
 
-    private fun handleGeoIntent(intent: Intent) {
-        val uri = intent.data ?: return
+    private fun handleGeoIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
         val schemeSpecificPart = uri.schemeSpecificPart
         val coordsPart = schemeSpecificPart.split('?')[0]
         val latLon = coordsPart.split(',')
