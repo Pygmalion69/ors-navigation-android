@@ -433,7 +433,7 @@ public class NavigationViewModel extends AndroidViewModel {
                 ).show();
                 importedRouteOffRouteMessageShown = true;
             }
-            isOffRoute.setValue(true);
+            isOffRoute.setValue(false);
             return;
         }
 
