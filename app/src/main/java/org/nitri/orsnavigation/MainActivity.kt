@@ -67,6 +67,7 @@ class MainActivity :
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var importedRouteLoader: ImportedRouteLoader
     private var pendingFileImportUri: Uri? = null
+    private var isImportedRouteNavigation = false
 
     private val readExternalStoragePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -113,6 +114,7 @@ class MainActivity :
         binding.startRouteButton.setOnClickListener {
             route?.let { route ->
                 val userLocation = mapLibreMap.locationComponent.lastKnownLocation ?: return@let
+                Timber.d("Starting navigation; importedRoute=%s", isImportedRouteNavigation)
                 val options = NavigationLauncherOptions.builder()
                     .directionsRoute(route)
                     .shouldSimulateRoute(simulateRoute)
@@ -122,6 +124,7 @@ class MainActivity :
                     )
                     .lightThemeResId(R.style.TestNavigationViewLight)
                     .darkThemeResId(R.style.TestNavigationViewDark)
+                    .importedRouteNavigation(isImportedRouteNavigation)
                     .build()
                 NavigationLauncher.startNavigation(this@MainActivity, options)
             }
@@ -272,6 +275,7 @@ class MainActivity :
         stopNavigationAndRoute()
         route = importedRoute
         destination = null
+        isImportedRouteNavigation = true
 
         if (::mapLibreMap.isInitialized) {
             navigationMapRoute?.addRoutes(listOf(importedRoute))
@@ -314,6 +318,7 @@ class MainActivity :
         navigationMapRoute?.removeRoute()
         route = null
         destination = null
+        isImportedRouteNavigation = false
         binding.clearPoints.visibility = View.GONE
         binding.startRouteLayout.visibility = View.GONE
     }
@@ -420,6 +425,7 @@ class MainActivity :
 
                 withContext(Dispatchers.Main) {
                     route = routeWithOptions
+                    isImportedRouteNavigation = false
                     navigationMapRoute?.addRoutes(listOf(routeWithOptions))
                     binding.startRouteLayout.visibility = View.VISIBLE
                 }

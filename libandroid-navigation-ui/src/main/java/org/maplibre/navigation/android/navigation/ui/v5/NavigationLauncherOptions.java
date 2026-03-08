@@ -27,12 +27,15 @@ public abstract class NavigationLauncherOptions extends NavigationUiOptions {
 
     public abstract Builder initialMapCameraPosition(@Nullable CameraPosition initialMapCameraPosition);
 
+    public abstract Builder importedRouteNavigation(boolean importedRouteNavigation);
+
     public abstract NavigationLauncherOptions build();
   }
 
   public static NavigationLauncherOptions.Builder builder() {
     return new AutoValue_NavigationLauncherOptions.Builder()
       .shouldSimulateRoute(false)
-      .waynameChipEnabled(true);
+      .waynameChipEnabled(true)
+      .importedRouteNavigation(false);
   }
 }

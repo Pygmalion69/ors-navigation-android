@@ -26,6 +26,8 @@ import org.maplibre.navigation.core.location.replay.ReplayRouteLocationEngine;
  */
 public class NavigationLauncher {
 
+  static final String EXTRA_IMPORTED_ROUTE_NAVIGATION = "org.maplibre.navigation.android.navigation.ui.v5.extra.IMPORTED_ROUTE_NAVIGATION";
+
   /**
    * Starts the UI with a {@link DirectionsRoute} already retrieved from
    * {@link NavigationRoute}
@@ -46,6 +48,7 @@ public class NavigationLauncher {
 
     Intent navigationActivity = new Intent(context, MapLibreNavigationActivity.class);
     storeInitialMapPosition(options, navigationActivity);
+    storeImportedRouteFlag(options, navigationActivity);
     context.startActivity(navigationActivity);
   }
 
@@ -97,6 +100,10 @@ public class NavigationLauncher {
         editor.putInt(NavigationConstants.NAVIGATION_VIEW_DARK_THEME, options.darkThemeResId());
       }
     }
+  }
+
+  private static void storeImportedRouteFlag(NavigationLauncherOptions options, Intent navigationActivity) {
+    navigationActivity.putExtra(EXTRA_IMPORTED_ROUTE_NAVIGATION, options.importedRouteNavigation());
   }
 
   private static void storeInitialMapPosition(NavigationLauncherOptions options, Intent navigationActivity) {
