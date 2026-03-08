@@ -94,6 +94,7 @@ public class MapLibreNavigationActivity extends AppCompatActivity implements OnN
     options.navigationListener(this);
     extractRoute(options);
     extractConfiguration(options);
+    extractImportedRouteFlag(options);
     options.navigationOptions(new MapLibreNavigationOptions());
     navigationView.startNavigation(options.build());
   }
@@ -130,6 +131,14 @@ public class MapLibreNavigationActivity extends AppCompatActivity implements OnN
   private void extractConfiguration(NavigationViewOptions.Builder options) {
     SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
     options.shouldSimulateRoute(preferences.getBoolean(NavigationConstants.NAVIGATION_VIEW_SIMULATE_ROUTE, false));
+  }
+
+  private void extractImportedRouteFlag(NavigationViewOptions.Builder options) {
+    boolean importedRouteNavigation = getIntent().getBooleanExtra(
+      NavigationLauncher.EXTRA_IMPORTED_ROUTE_NAVIGATION,
+      false
+    );
+    options.importedRouteNavigation(importedRouteNavigation);
   }
 
   private void finishNavigation() {

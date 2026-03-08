@@ -2,6 +2,7 @@ package org.maplibre.navigation.android.navigation.ui.v5;
 
 import android.app.Application;
 import android.content.Context;
+import android.widget.Toast;
 import org.maplibre.navigation.core.location.Location;
 
 import androidx.annotation.NonNull;
@@ -43,6 +44,8 @@ import org.jetbrains.annotations.TestOnly;
 
 import java.util.List;
 
+import timber.log.Timber;
+
 public class NavigationViewModel extends AndroidViewModel {
 
     private static final String EMPTY_STRING = "";
@@ -73,6 +76,8 @@ public class NavigationViewModel extends AndroidViewModel {
     private MapLibreNavigationOptions.TimeFormat timeFormatType;
     private boolean isRunning;
     private boolean isChangingConfigurations;
+    private boolean isImportedRouteNavigation;
+    private boolean importedRouteOffRouteMessageShown;
     private RouteUtils routeUtils = new RouteUtils();
 
     public NavigationViewModel(Application application) {
@@ -155,6 +160,9 @@ public class NavigationViewModel extends AndroidViewModel {
             addMilestones(options);
             initializeNavigationSpeechPlayer(options);
         }
+        isImportedRouteNavigation = options.importedRouteNavigation();
+        importedRouteOffRouteMessageShown = false;
+        Timber.d("Starting navigation; importedRoute=%s", isImportedRouteNavigation);
         router.extractRouteOptions(options);
     }
 
@@ -413,6 +421,22 @@ public class NavigationViewModel extends AndroidViewModel {
     }
 
     private void handleOffRouteEvent(Point newOrigin) {
+        Timber.w("Off-route detected; importedRoute=%s", isImportedRouteNavigation);
+
+        if (isImportedRouteNavigation) {
+            Timber.w("Skipping online reroute because current session uses an imported route");
+            if (!importedRouteOffRouteMessageShown) {
+                Toast.makeText(
+                    getApplication(),
+                    "Off route — automatic rerouting is disabled for imported routes",
+                    Toast.LENGTH_LONG
+                ).show();
+                importedRouteOffRouteMessageShown = true;
+            }
+            isOffRoute.setValue(true);
+            return;
+        }
+
         if (navigationViewEventDispatcher != null && navigationViewEventDispatcher.allowRerouteFrom(newOrigin)) {
             navigationViewEventDispatcher.onOffRoute(newOrigin);
             router.findRouteFrom(routeProgress);
