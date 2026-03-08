@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import android.app.Application;
 
+import org.maplibre.geojson.Point;
 import org.maplibre.navigation.core.models.DirectionsRoute;
 import org.maplibre.navigation.android.navigation.ui.v5.voice.SpeechPlayer;
 import org.maplibre.navigation.core.navigation.MapLibreNavigation;
@@ -16,6 +17,9 @@ import org.maplibre.navigation.core.navigation.MapLibreNavigation;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 @RunWith(RobolectricTestRunner.class)
 public class NavigationViewModelTest {
@@ -127,5 +131,28 @@ public class NavigationViewModelTest {
     boolean isMuted = viewModel.isMuted();
 
     assertTrue(isMuted);
+  }
+
+  @Test
+  public void handleOffRouteEvent_importedRouteClearsOffRouteState() throws Exception {
+    Application application = mock(Application.class);
+    MapLibreNavigation navigation = mock(MapLibreNavigation.class);
+    NavigationViewRouter router = mock(NavigationViewRouter.class);
+    NavigationViewModel viewModel = new NavigationViewModel(application, navigation, router);
+    viewModel.isOffRoute.setValue(true);
+
+    Field importedRouteNavigationField = NavigationViewModel.class.getDeclaredField("isImportedRouteNavigation");
+    importedRouteNavigationField.setAccessible(true);
+    importedRouteNavigationField.setBoolean(viewModel, true);
+
+    Field offRouteMessageShownField = NavigationViewModel.class.getDeclaredField("importedRouteOffRouteMessageShown");
+    offRouteMessageShownField.setAccessible(true);
+    offRouteMessageShownField.setBoolean(viewModel, true);
+
+    Method handleOffRouteEventMethod = NavigationViewModel.class.getDeclaredMethod("handleOffRouteEvent", Point.class);
+    handleOffRouteEventMethod.setAccessible(true);
+    handleOffRouteEventMethod.invoke(viewModel, Point.fromLngLat(8.68, 49.41));
+
+    assertFalse(viewModel.isOffRoute());
   }
 }
