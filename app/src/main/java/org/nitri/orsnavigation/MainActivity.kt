@@ -1,10 +1,16 @@
 package org.nitri.orsnavigation
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,8 +31,6 @@ import org.maplibre.android.maps.Style
 import org.maplibre.geojson.model.Point
 import org.maplibre.geojson.turf.TurfMeasurement
 import org.maplibre.geojson.turf.TurfUnit
-import org.nitri.orsnavigation.databinding.ActivityMainBinding
-import org.nitri.orsnavigation.ors.OrsRouteAdapter
 import org.maplibre.navigation.android.navigation.ui.v5.NavigationLauncher
 import org.maplibre.navigation.android.navigation.ui.v5.NavigationLauncherOptions
 import org.maplibre.navigation.android.navigation.ui.v5.route.NavigationMapRoute
@@ -37,7 +41,10 @@ import org.nitri.ors.Ors
 import org.nitri.ors.OrsClient
 import org.nitri.ors.Profile
 import org.nitri.ors.domain.route.RouteRequest
+import org.nitri.orsnavigation.databinding.ActivityMainBinding
+import org.nitri.orsnavigation.ors.OrsRouteAdapter
 import timber.log.Timber
+import java.io.FileNotFoundException
 import java.util.Locale
 import java.util.UUID
 
@@ -58,6 +65,22 @@ class MainActivity :
 
     private var simulateRoute = false
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private lateinit var importedRouteLoader: ImportedRouteLoader
+    private var pendingFileImportUri: Uri? = null
+
+    private val readExternalStoragePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val pendingUri = pendingFileImportUri
+        pendingFileImportUri = null
+
+        if (granted && pendingUri != null) {
+            Timber.d("READ_EXTERNAL_STORAGE granted, retrying route import uri=%s", pendingUri)
+            importJsonRoute(pendingUri, canRequestExternalStoragePermission = false)
+        } else if (!granted) {
+            showError("Storage permission denied. Unable to import route from external file.")
+        }
+    }
 
     @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,6 +106,7 @@ class MainActivity :
             ).show()
         }
         orsClient = Ors.create(apiKey, this)
+        importedRouteLoader = ImportedRouteLoader(contentResolver = contentResolver, language = language)
 
         handleIntent(intent)
 
@@ -119,38 +143,152 @@ class MainActivity :
     }
 
     private fun handleIntent(intent: Intent?) {
-        intent?.data?.let { uri ->
-            if (uri.scheme == "geo") {
-                val schemeSpecificPart = uri.schemeSpecificPart
-                val coordsPart = schemeSpecificPart.split('?')[0]
-                val latLon = coordsPart.split(',')
-                if (latLon.size >= 2) {
+        Timber.d(
+            "handleIntent action=%s data=%s type=%s",
+            intent?.action,
+            intent?.data,
+            intent?.type,
+        )
+
+        when (ImportedRouteIntentClassifier.classify(intent)) {
+            IncomingIntentType.Geo -> handleGeoIntent(intent)
+            IncomingIntentType.JsonRoute -> {
+                val uri = intent?.data
+                if (uri == null) {
+                    showError("Route import failed: missing URI.")
+                } else {
+                    importJsonRoute(uri)
+                }
+            }
+
+            IncomingIntentType.Unsupported -> {
+                Timber.d("Unsupported or empty launch intent.")
+            }
+        }
+    }
+
+    private fun handleGeoIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
+        val schemeSpecificPart = uri.schemeSpecificPart
+        val coordsPart = schemeSpecificPart.split('?')[0]
+        val latLon = coordsPart.split(',')
+        if (latLon.size >= 2) {
+            try {
+                val lat = latLon[0].toDouble()
+                val lon = latLon[1].toDouble()
+                setDestination(LatLng(lat, lon))
+            } catch (e: NumberFormatException) {
+                Timber.e(e, "Invalid coordinates in geo URI")
+                showError("Invalid geo coordinates in intent URI.")
+            }
+        } else {
+            // Try to parse query if present, e.g., geo:0,0?q=lat,lon(label)
+            val query = uri.query
+            if (query != null && query.startsWith("q=")) {
+                val qValue = query.substring(2).split('(')[0]
+                val qLatLon = qValue.split(',')
+                if (qLatLon.size >= 2) {
                     try {
-                        val lat = latLon[0].toDouble()
-                        val lon = latLon[1].toDouble()
+                        val lat = qLatLon[0].toDouble()
+                        val lon = qLatLon[1].toDouble()
                         setDestination(LatLng(lat, lon))
                     } catch (e: NumberFormatException) {
-                        Timber.e(e, "Invalid coordinates in geo URI")
-                    }
-                } else {
-                    // Try to parse query if present, e.g., geo:0,0?q=lat,lon(label)
-                    val query = uri.query
-                    if (query != null && query.startsWith("q=")) {
-                        val qValue = query.substring(2).split('(')[0]
-                        val qLatLon = qValue.split(',')
-                        if (qLatLon.size >= 2) {
-                            try {
-                                val lat = qLatLon[0].toDouble()
-                                val lon = qLatLon[1].toDouble()
-                                setDestination(LatLng(lat, lon))
-                            } catch (e: NumberFormatException) {
-                                Timber.e(e, "Invalid coordinates in geo URI query")
-                            }
-                        }
+                        Timber.e(e, "Invalid coordinates in geo URI query")
+                        showError("Invalid geo query coordinates in intent URI.")
                     }
                 }
             }
         }
+    }
+
+    private fun importJsonRoute(uri: Uri, canRequestExternalStoragePermission: Boolean = true) {
+        ioScope.launch {
+            Timber.d("Importing JSON route from uri=%s", uri)
+            when (val result = importedRouteLoader.load(uri)) {
+                is ImportedRouteResult.Success -> {
+                    withContext(Dispatchers.Main) {
+                        activateImportedRoute(result.route)
+                        Snackbar.make(
+                            findViewById(R.id.container),
+                            "Route imported successfully.",
+                            Snackbar.LENGTH_LONG,
+                        ).show()
+                    }
+                    Timber.d("Route import successful")
+                }
+
+                is ImportedRouteResult.Error -> {
+                    Timber.e(result.cause, "Route import failed: %s", result.message)
+                    withContext(Dispatchers.Main) {
+                        if (
+                            canRequestExternalStoragePermission &&
+                            shouldRequestReadExternalStoragePermission(uri, result.cause) &&
+                            requestReadExternalStoragePermissionAndRetry(uri)
+                        ) {
+                            return@withContext
+                        }
+
+                        stopNavigationAndRoute()
+                        showError("Route import failed: ${result.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun shouldRequestReadExternalStoragePermission(uri: Uri, cause: Throwable?): Boolean {
+        if (uri.scheme != "file") return false
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2) return false
+        if (hasReadExternalStoragePermission()) return false
+
+        return cause is SecurityException || cause is FileNotFoundException
+    }
+
+    private fun hasReadExternalStoragePermission(): Boolean {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2) return true
+
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestReadExternalStoragePermissionAndRetry(uri: Uri): Boolean {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2) {
+            return false
+        }
+
+        if (hasReadExternalStoragePermission()) {
+            return false
+        }
+
+        pendingFileImportUri = uri
+        readExternalStoragePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+        showError("Grant storage permission to import the route file.")
+        return true
+    }
+
+    private fun activateImportedRoute(importedRoute: DirectionsRoute) {
+        stopNavigationAndRoute()
+        route = importedRoute
+        destination = null
+
+        if (::mapLibreMap.isInitialized) {
+            navigationMapRoute?.addRoutes(listOf(importedRoute))
+        }
+
+        binding.clearPoints.visibility = View.VISIBLE
+        binding.startRouteLayout.visibility = View.VISIBLE
+        binding.startRouteButton.visibility = View.VISIBLE
+        Timber.d("Imported route activation successful")
+    }
+
+    private fun showError(message: String) {
+        Snackbar.make(
+            findViewById(R.id.container),
+            message,
+            Snackbar.LENGTH_LONG,
+        ).show()
     }
 
     private fun setDestination(point: LatLng) {
@@ -194,6 +332,12 @@ class MainActivity :
                 mapLibreMap.addMarker(MarkerOptions().position(point))
                 binding.clearPoints.visibility = View.VISIBLE
                 calculateRoute()
+            }
+
+            route?.let {
+                navigationMapRoute?.addRoutes(listOf(it))
+                binding.startRouteLayout.visibility = View.VISIBLE
+                binding.clearPoints.visibility = View.VISIBLE
             }
 
             Snackbar.make(
